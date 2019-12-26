@@ -23,13 +23,16 @@ class Gridworld(gym.Env):
         self.width = width
         self.height = height
         
+        self.time = 0
+        self.cutoff = 5000
+
         self.board = np.array(board)
         self.board_interactive = np.array(board)
         self.board_goal = np.array(board)
         
         # Wall
-        for i in range(1, width - 1):
-            self.board[2][i] = 1
+        #for i in range(1, width - 1):
+        #    self.board[2][i] = 1
 
         self.size = len(board)
         self.cell_size = scale
@@ -52,13 +55,14 @@ class Gridworld(gym.Env):
         self.board_goal[goal_pos[1]][goal_pos[0]] = 1
         
     def reset(self):
+        self.time = 0
         board = np.zeros((self.height, self.width))
         self.board = np.array(board)
         self.board_interactive = np.array(board)
         self.board_goal = np.array(board)
         
-        for i in range(1, self.width - 1):
-            self.board[2][i] = 1
+        #for i in range(1, self.width - 1):
+        #    self.board[2][i] = 1
         
         self.agent_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
         while self.board[self.agent_pos[1]][self.agent_pos[0]] == 1:
@@ -90,7 +94,8 @@ class Gridworld(gym.Env):
         return state
         
     def step(self, action):
-        done = False
+        done = self.time > self.cutoff
+        self.time += 1
         reward = -1
         
         target_x, target_y = self.agent_pos
