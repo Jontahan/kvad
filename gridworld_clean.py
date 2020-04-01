@@ -3,11 +3,12 @@ import pygame as pg
 import gym
 from gym import spaces
 
+# For visualization
 colors = {
     'floor' : (80, 80, 80),
-    'floor_edge' : (60, 60, 60),
+    'floor_edge' : (70, 70, 70),
     'wall' : (50, 50, 50),
-    'wall_edge' : (30, 30, 30),
+    'wall_edge' : (40, 40, 40),
     'box' : (80, 60, 0),
     'box_edge' : (60, 40, 0),
     'goal' : (10, 10, 10),
@@ -15,82 +16,48 @@ colors = {
 }
 
 class Gridworld(gym.Env):
+    # Action space
     UP, DOWN, LEFT, RIGHT = range(4)
 
-    def __init__(self, scale, width=8, height=16):
+    def __init__(self, cell_size=16, width=8, height=8, walls=None, screen=None):
         self.action_space = spaces.Discrete(4)
-        board = np.zeros((height, width))
+        
+        # dimensions
         self.width = width
         self.height = height
         
+        # timeout
         self.time = 0
-        self.cutoff = 5000
+        self.cutoff = 1000
 
-        self.board = np.array(board)
-        self.board_interactive = np.array(board)
-        self.board_goal = np.array(board)
-        
-        # Wall
-        #for i in range(1, width - 1):
-        #    self.board[2][i] = 1
+        # wall matrix
+        self.walls = walls
 
-        self.size = len(board)
-        self.cell_size = scale
-        self.screen = None
+        # visualization
+        self.cell_size = cell_size
+        self.screen = screen
 
-        self.agent_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        while self.board[self.agent_pos[1]][self.agent_pos[0]] == 1:
-            self.agent_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        
-        box_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        while self.board[box_pos[1]][box_pos[0]] == 1 or box_pos == self.agent_pos:
-            box_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        
-        self.board_interactive[box_pos[1]][box_pos[0]] = 1
-        
-        goal_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        while self.board[goal_pos[1]][goal_pos[0]] == 1 or goal_pos == self.agent_pos or goal_pos == box_pos:
-            goal_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        
-        self.board_goal[goal_pos[1]][goal_pos[0]] = 1
-        
     def reset(self):
+        # timeout
         self.time = 0
-        board = np.zeros((self.height, self.width))
-        self.board = np.array(board)
-        self.board_interactive = np.array(board)
-        self.board_goal = np.array(board)
-        
-        #for i in range(1, self.width - 1):
-        #    self.board[2][i] = 1
+
+        # state
+        self.board_walls = np.array(self.walls[np.random.randint(0, len(self.walls))]) if self.walls else np.zeros((self.height, self.width))
+        self.board_interactive = np.zeros((self.height, self.width))
+        self.board_goal = np.zeros((self.height, self.width))
         
         self.agent_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        while self.board[self.agent_pos[1]][self.agent_pos[0]] == 1:
+        while self.board_walls[self.agent_pos[1]][self.agent_pos[0]] == 1:
             self.agent_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
         
-        box_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        while self.board[box_pos[1]][box_pos[0]] == 1 or box_pos == self.agent_pos:
-            box_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        
-        self.agent_pos = (0, 0)
-        box_pos = (2, 2)
-        
-        self.board_interactive[box_pos[1]][box_pos[0]] = 1
-        
-        goal_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        while self.board[goal_pos[1]][goal_pos[0]] == 1 or goal_pos == self.agent_pos or goal_pos == box_pos:
-            goal_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        
-        goal_pos = (6, 6)
-        
+        goal_pos = (4, 4)
         self.board_goal[goal_pos[1]][goal_pos[0]] = 1
         
-
         agent_pos_matrix = np.zeros((self.height, self.width))
         agent_pos_matrix[self.agent_pos[1]][self.agent_pos[0]] = 1
 
         state = np.array([[
-            self.board,
+            self.board_walls,
             self.board_interactive,
             self.board_goal,
             agent_pos_matrix
@@ -121,7 +88,7 @@ class Gridworld(gym.Env):
                 if action == Gridworld.RIGHT: box_target_x += 1
                 
                 if box_target_x in range(self.width) and box_target_y in range(self.height):
-                    if self.board[box_target_y][box_target_x] == 0 and \
+                    if self.board_walls[box_target_y][box_target_x] == 0 and \
                        self.board_interactive[box_target_y][box_target_x] == 0:
                         self.agent_pos = (target_x, target_y)
                         self.board_interactive[target_y][target_x] = 0
@@ -137,21 +104,27 @@ class Gridworld(gym.Env):
                     done = True
                     reward = 10
 
+            if target_x in range(self.width) and target_y in range(self.height) and self.board_goal[target_y][target_x] == 1:
+                    done = True
+                    reward = 10
+
                         
-            elif self.board[target_y][target_x] == 0:
+            elif self.board_walls[target_y][target_x] == 0:
                 self.agent_pos = (target_x, target_y)
 
         agent_pos_matrix = np.zeros((self.height, self.width))
         agent_pos_matrix[self.agent_pos[1]][self.agent_pos[0]] = 1
-
+        
+        agent_pos_i = self.width * self.agent_pos[1] + self.agent_pos[0]
+        
         state = np.array([[
-            self.board,
+            self.board_walls,
             self.board_interactive,
             self.board_goal,
             agent_pos_matrix
         ]])
 
-        return state, reward, done, {}
+        return state, reward, done, { 'agent_pos_i' : agent_pos_i }
     
     def resolve_corner(self, target_x, target_y, box_target_x, box_target_y):
         diff_x = target_x - box_target_x 
@@ -159,10 +132,10 @@ class Gridworld(gym.Env):
         
         if diff_x == 0: # vertical
             left = target_x - 1 not in range(self.width) or \
-                self.board[target_y][target_x - 1] == 1 or \
+                self.board_walls[target_y][target_x - 1] == 1 or \
                 self.board_interactive[target_y][target_x - 1] == 1
             right = target_x + 1 not in range(self.width) or \
-                self.board[target_y][target_x + 1] == 1 or \
+                self.board_walls[target_y][target_x + 1] == 1 or \
                 self.board_interactive[target_y][target_x + 1] == 1
             if left:
                 return True, target_x, target_y, target_x + 1, target_y
@@ -172,10 +145,10 @@ class Gridworld(gym.Env):
                 
         if diff_y == 0: # horizontal
             up = target_y - 1 not in range(self.height) or \
-                self.board[target_y - 1][target_x] == 1 or \
+                self.board_walls[target_y - 1][target_x] == 1 or \
                 self.board_interactive[target_y - 1][target_x] == 1
             down = target_y + 1 not in range(self.height) or \
-                self.board[target_y + 1][target_x] == 1 or \
+                self.board_walls[target_y + 1][target_x] == 1 or \
                 self.board_interactive[target_y + 1][target_x] == 1
             if up:
                 return True, target_x, target_y, target_x, target_y + 1
@@ -187,27 +160,28 @@ class Gridworld(gym.Env):
                 
 
     def draw(self, screen, heatmap=None):
-        for i in range(len(self.board[0])):
-            for j in range(len(self.board)):
+        for i in range(len(self.board_walls[0])):
+            for j in range(len(self.board_walls)):
                 cell = pg.Rect(self.cell_size * i, self.cell_size * j, self.cell_size, self.cell_size)
+                cell_border = pg.Rect(self.cell_size * i, self.cell_size * j, self.cell_size + 1, self.cell_size + 1)
                 
-                if self.board[j][i] == 1: 
+                if self.board_walls[j][i] == 1: 
                     pg.draw.rect(screen, colors['wall'], cell)
-                    pg.draw.rect(screen, colors['wall_edge'], cell, 1)
+                    pg.draw.rect(screen, colors['wall_edge'], cell_border, 1)
                 elif self.board_interactive[j][i] == 1: 
                     pg.draw.rect(screen, colors['box'], cell)
-                    pg.draw.rect(screen, colors['box_edge'], cell, 1)
+                    pg.draw.rect(screen, colors['box_edge'], cell_border, 1)
                 elif self.board_goal[j][i] == 1: 
                     pg.draw.rect(screen, colors['goal'], cell)
-                    pg.draw.rect(screen, colors['goal_edge'], cell, 1)
+                    pg.draw.rect(screen, colors['goal_edge'], cell_border, 1)
                 else:
                     pg.draw.rect(screen, colors['floor'], cell)
-                    pg.draw.rect(screen, colors['floor_edge'], cell, 1)
+                    pg.draw.rect(screen, colors['floor_edge'], cell_border, 1)
         
-        cell = pg.Rect(self.cell_size * self.agent_pos[0], self.cell_size * self.agent_pos[1], self.cell_size, self.cell_size)
+        agent_cell = pg.Rect(self.cell_size * self.agent_pos[0] + 2, self.cell_size * self.agent_pos[1] + 2, self.cell_size - 4, self.cell_size - 4)
         
-        pg.draw.rect(screen, (100, 0, 0), cell)
-        pg.draw.rect(screen, (90, 0, 0), cell, 1)
+        pg.draw.rect(screen, (100, 0, 0), agent_cell)
+        pg.draw.rect(screen, (90, 0, 0), agent_cell, 1)
         
 
     

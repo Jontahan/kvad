@@ -1,4 +1,4 @@
-from gridworld import Gridworld
+from gridworld_base import Gridworld
 import pygame as pg
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from vicero.algorithms.deepqlearning import DQN
 
 scale = 24
-env = Gridworld(scale, width=8, height=8)
+env = Gridworld(scale, width=6, height=6)
 
 pg.init()
 screen = pg.display.set_mode((scale * len(env.board[0]), scale * len(env.board)))
@@ -32,11 +32,12 @@ def plot(history):
         plt.ylabel('Duration')
         plt.plot(durations_t.numpy(), c='lightgray', linewidth=1)
 
-        his = 100
+        his = 50
         if len(durations_t) >= his:
             means = durations_t.unfold(0, his, 1).mean(1).view(-1)
             means = torch.cat((torch.zeros(his - 1), means))
             plt.plot(means.numpy(), c='green')
+            print(np.std(durations_t[-his:].tolist()))
             
         plt.pause(0.001)
 
@@ -79,5 +80,5 @@ class PolicyNet(nn.Module):
         x = self.fc3(x)
         return x
 
-dqn = DQN(env, qnet=PolicyNet().double(), plotter=plot, render=True, memory_length=2000, gamma=.95, alpha=.001, epsilon_start=0.1)
+dqn = DQN(env, qnet=PolicyNet().double(), plotter=plot, render=True, memory_length=2000, gamma=.99, alpha=.001, epsilon_start=0.1)
 dqn.train(2000, 4, plot=True, verbose=True)

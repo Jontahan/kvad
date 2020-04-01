@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from vicero.algorithms.reinforce import Reinforce
 
 scale = 32
-env = Gridworld(scale, width=5, height=5)
+env = Gridworld(scale, width=4, height=4)
 
 pg.init()
 screen = pg.display.set_mode((scale * len(env.board[0]), scale * len(env.board)))
@@ -36,6 +36,20 @@ def plot(history):
 class PolicyNet(nn.Module):
     def __init__(self):
         super(PolicyNet, self).__init__()
+        self.fc1 = nn.Linear(64, 32)
+        self.fc2 = nn.Linear(32, 16)
+        self.fc3 = nn.Linear(16, 4)
+        
+    def forward(self, x):
+        x = torch.flatten(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = torch.sigmoid(self.fc3(x))
+        return x
+"""
+class PolicyNet(nn.Module):
+    def __init__(self):
+        super(PolicyNet, self).__init__()
         self.conv = nn.Conv2d(4, 8, 3, padding=1)
         self.conv2 = nn.Conv2d(8, 4, 3)
         self.pool = nn.MaxPool2d(2, 2)
@@ -52,6 +66,7 @@ class PolicyNet(nn.Module):
         x = F.relu(self.fc2(x))
         x = torch.sigmoid(self.fc3(x))
         return x
+"""
 
-poligrad = Reinforce(env, polinet=PolicyNet(), learning_rate=0.004, gamma=0.98, batch_size=5, plotter=plot)
+poligrad = Reinforce(env, polinet=PolicyNet(), learning_rate=0.004, gamma=0.99, batch_size=5, plotter=plot)
 poligrad.train(10000)

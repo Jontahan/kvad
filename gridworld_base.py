@@ -17,19 +17,20 @@ colors = {
 class Gridworld(gym.Env):
     UP, DOWN, LEFT, RIGHT = range(4)
 
-    def __init__(self, scale, width=8, height=16):
+    def __init__(self, scale, width=8, height=16, walls=None):
         self.action_space = spaces.Discrete(4)
         board = np.zeros((height, width))
         self.width = width
         self.height = height
         
         self.time = 0
-        self.cutoff = 5000
+        self.cutoff = 1000
 
-        self.board = np.array(board)
+        self.board = np.array(walls) if walls else np.array(board)
         self.board_interactive = np.array(board)
         self.board_goal = np.array(board)
-        
+        self.walls = walls
+
         # Wall
         #for i in range(1, width - 1):
         #    self.board[2][i] = 1
@@ -46,7 +47,7 @@ class Gridworld(gym.Env):
         while self.board[box_pos[1]][box_pos[0]] == 1 or box_pos == self.agent_pos:
             box_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
         
-        self.board_interactive[box_pos[1]][box_pos[0]] = 1
+        #self.board_interactive[box_pos[1]][box_pos[0]] = 1
         
         goal_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
         while self.board[goal_pos[1]][goal_pos[0]] == 1 or goal_pos == self.agent_pos or goal_pos == box_pos:
@@ -56,36 +57,18 @@ class Gridworld(gym.Env):
         
     def reset(self):
         self.time = 0
-        board = np.zeros((self.height, self.width))
-        self.board = np.array(board)
-        self.board_interactive = np.array(board)
-        self.board_goal = np.array(board)
-        
-        #for i in range(1, self.width - 1):
-        #    self.board[2][i] = 1
+        blank = np.zeros((self.height, self.width))
+        self.board = np.array(self.walls) if self.walls else np.array(blank)
+        self.board_interactive = np.array(blank)
+        self.board_goal = np.array(blank)
         
         self.agent_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
         while self.board[self.agent_pos[1]][self.agent_pos[0]] == 1:
             self.agent_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
         
-        box_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        while self.board[box_pos[1]][box_pos[0]] == 1 or box_pos == self.agent_pos:
-            box_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        
-        self.agent_pos = (0, 0)
-        box_pos = (2, 2)
-        
-        self.board_interactive[box_pos[1]][box_pos[0]] = 1
-        
-        goal_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        while self.board[goal_pos[1]][goal_pos[0]] == 1 or goal_pos == self.agent_pos or goal_pos == box_pos:
-            goal_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        
-        goal_pos = (6, 6)
-        
+        goal_pos = (4, 4)
         self.board_goal[goal_pos[1]][goal_pos[0]] = 1
         
-
         agent_pos_matrix = np.zeros((self.height, self.width))
         agent_pos_matrix[self.agent_pos[1]][self.agent_pos[0]] = 1
 
@@ -137,13 +120,19 @@ class Gridworld(gym.Env):
                     done = True
                     reward = 10
 
+            if target_x in range(self.width) and target_y in range(self.height) and self.board_goal[target_y][target_x] == 1:
+                    done = True
+                    reward = 10
+
                         
             elif self.board[target_y][target_x] == 0:
                 self.agent_pos = (target_x, target_y)
 
         agent_pos_matrix = np.zeros((self.height, self.width))
         agent_pos_matrix[self.agent_pos[1]][self.agent_pos[0]] = 1
-
+        
+        agent_pos_i = self.width * self.agent_pos[1] + self.agent_pos[0]
+        
         state = np.array([[
             self.board,
             self.board_interactive,
@@ -151,7 +140,7 @@ class Gridworld(gym.Env):
             agent_pos_matrix
         ]])
 
-        return state, reward, done, {}
+        return state, reward, done, { 'agent_pos_i' : agent_pos_i }
     
     def resolve_corner(self, target_x, target_y, box_target_x, box_target_y):
         diff_x = target_x - box_target_x 
