@@ -19,9 +19,13 @@ class Gridworld(gym.Env):
     # Action space
     UP, DOWN, LEFT, RIGHT = range(4)
 
-    def __init__(self, cell_size=16, width=8, height=8, walls=None, screen=None):
+    def __init__(self, cell_size=16, width=8, height=8, walls=None, screen=None, agent_pos=(0, 0), goal_pos=(0, 0)):
         self.action_space = spaces.Discrete(4)
         
+        # config
+        self.init_agent_pos = agent_pos
+        self.goal_pos = goal_pos
+
         # dimensions
         self.width = width
         self.height = height
@@ -45,13 +49,8 @@ class Gridworld(gym.Env):
         self.board_walls = np.array(self.walls[np.random.randint(0, len(self.walls))]) if self.walls else np.zeros((self.height, self.width))
         self.board_interactive = np.zeros((self.height, self.width))
         self.board_goal = np.zeros((self.height, self.width))
-        
-        self.agent_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        while self.board_walls[self.agent_pos[1]][self.agent_pos[0]] == 1:
-            self.agent_pos = (np.random.randint(0, self.width), np.random.randint(0, self.height))
-        
-        goal_pos = (4, 4)
-        self.board_goal[goal_pos[1]][goal_pos[0]] = 1
+        self.agent_pos = self.init_agent_pos
+        self.board_goal[self.goal_pos[1]][self.goal_pos[0]] = 1
         
         agent_pos_matrix = np.zeros((self.height, self.width))
         agent_pos_matrix[self.agent_pos[1]][self.agent_pos[0]] = 1

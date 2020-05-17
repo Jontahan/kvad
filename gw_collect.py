@@ -4,6 +4,7 @@ import gym
 from gym import spaces
 from itertools import chain, combinations
 import random
+import os
 
 # For visualization
 colors = {
@@ -13,6 +14,14 @@ colors = {
     'food_edge' : (2*70, 2*70, 0),
     'wall' : (50, 50, 50),
     'wall_edge' : (40, 40, 40),
+}
+
+pwd = os.path.dirname(os.path.realpath(__file__))
+
+sprites = {
+    'agent' : pg.image.load(os.path.join(pwd, 'res', 'tile_agent.png')),
+    'gem' : pg.image.load(os.path.join(pwd, 'res', 'tile_gem.png')),
+    'wall' : pg.image.load(os.path.join(pwd, 'res', 'tile_wall.png'))
 }
 
 class Gridworld(gym.Env):
@@ -88,7 +97,7 @@ class Gridworld(gym.Env):
     def step(self, action):
         done = self.time > self.cutoff
         self.time += 1
-        reward = 0#-1
+        reward = 0
         
         target_x, target_y = self.agent_pos
 
@@ -135,17 +144,11 @@ class Gridworld(gym.Env):
                 pg.draw.rect(screen, colors['floor_edge'], cell_border, 1)
         
                 if self.board_walls[j][i] == 1: 
-                    pg.draw.rect(screen, colors['wall'], cell)
-                    pg.draw.rect(screen, colors['wall_edge'], cell_border, 1)
-                elif self.board_interactive[j][i] == 1: 
-                    cell = pg.Rect(self.cell_size * i + +(self.cell_size // 4), self.cell_size * j + (self.cell_size // 4), self.cell_size // 2, self.cell_size // 2)
-                    pg.draw.rect(screen, colors['food'], cell)
-                    pg.draw.rect(screen, colors['food_edge'], cell, 1)
+                    screen.blit(pg.transform.scale(sprites['wall'], (self.cell_size, self.cell_size)), (self.cell_size * i, self.cell_size * j))
+                if self.board_interactive[j][i] == 1: 
+                    screen.blit(pg.transform.scale(sprites['gem'], (self.cell_size, self.cell_size)), (self.cell_size * i, self.cell_size * j))
                 
-        agent_cell = pg.Rect(self.cell_size * self.agent_pos[0] + 2, self.cell_size * self.agent_pos[1] + 2, self.cell_size - 4, self.cell_size - 4)
-        
-        pg.draw.rect(screen, (100, 0, 0), agent_cell)
-        pg.draw.rect(screen, (90, 0, 0), agent_cell, 1)
+        screen.blit(pg.transform.scale(sprites['agent'], (self.cell_size, self.cell_size)), (self.cell_size * self.agent_pos[0], self.cell_size * self.agent_pos[1]))
         
     def get_all_states(self):
         states = []

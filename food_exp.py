@@ -1,6 +1,6 @@
 import numpy as np
 
-from gridworld_clean import Gridworld
+from gw_collect import Gridworld
 import pygame as pg
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from vicero.algorithms.deepqlearning import DQN
+
 """
 walls = [
     [
@@ -32,6 +33,7 @@ walls = [
 
 env = Gridworld(width=6, height=6, walls=walls, cell_size=32, agent_pos=(0, 4), goal_pos=(4, 4))
 """
+"""
 walls = [
     [
         [ 0, 0, 0, 0 ],
@@ -46,7 +48,9 @@ walls = [
         [ 0, 0, 1, 0 ]
     ]
 ]
-env = Gridworld(width=4, height=4, walls=walls, cell_size=32, agent_pos=(0, 3), goal_pos=(3, 3))
+"""
+
+env = Gridworld(width=6, height=6, cell_size=32, agent_pos=(0, 3), food_pos=[(0, 0), (3, 3), (4, 5), (2, 0)])
 
 pg.init()
 screen = pg.display.set_mode((env.cell_size * env.width, env.cell_size * env.height))
@@ -92,8 +96,8 @@ num_episodes = 2000
 convergence_durations = []
 for i in range(50):
     print('Simulation {}/{}'.format(i, 50))
-    net = DenseNet(64, [4]).double()
-    dqn = DQN(env, qnet=net, plotter=plot, render=True, memory_length=2000, gamma=gamma, alpha=alpha, epsilon_start=0.1, caching_interval=3000)
+    net = DenseNet(144, [16, 4]).double()
+    dqn = DQN(env, qnet=net, plotter=plot, render=True, memory_length=2000, gamma=gamma, alpha=alpha, epsilon_start=0.3, caching_interval=3000)
 
     for e in range(num_episodes):
         dqn.train_episode(e, num_episodes, 16, plot=True, verbose=False)
