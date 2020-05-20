@@ -190,3 +190,6 @@ class Gridworld(gym.Env):
     def render(self, mode=''):
         self.draw(self.screen)    
         pg.display.flip()
+
+    def __str__(self):
+        return 'gw_collect_{}x{}_seed={}'.format(self.width, self.height, self.seed)
