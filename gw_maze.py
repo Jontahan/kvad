@@ -24,6 +24,34 @@ sprites = {
     'wall' : pg.image.load(os.path.join(pwd, 'res', 'tile_wall.png'))
 }
 
+def generate_maze(width, height, rng=random.Random(), complexity=.75, density=.75):
+    assert width % 2 == 1 and height % 2 == 1, 'Maze environments require odd dimensions.'
+    
+    shape = ((height // 2) * 2 + 1, (width // 2) * 2 + 1)
+    complexity = int(complexity * (5 * (shape[0] + shape[1])))
+    density = int(density * ((shape[0] // 2) * (shape[1] // 2)))
+    board = np.zeros(shape, dtype=bool)
+        
+    board[0, :] = board[-1, :] = 1
+    board[:, 0] = board[:, -1] = 1
+        
+    for i in range(density):
+        x, y = rng.randint(0, shape[1] // 2) * 2, rng.randint(0, shape[0] // 2) * 2
+        board[y, x] = 1
+        for j in range(complexity):
+            neighbours = []
+            if x > 1:             neighbours.append((y, x - 2))
+            if x < shape[1] - 2:  neighbours.append((y, x + 2))
+            if y > 1:             neighbours.append((y - 2, x))
+            if y < shape[0] - 2:  neighbours.append((y + 2, x))
+            if len(neighbours):
+                y_,x_ = neighbours[rng.randint(0, len(neighbours) - 1)]
+                if board[y_, x_] == 0:
+                    board[y_, x_] = 1
+                    board[y_ + (y - y_) // 2, x_ + (x - x_) // 2] = 1
+                    x, y = x_, y_
+    return board
+
 class Gridworld(gym.Env):
     # Action space
     UP, DOWN, LEFT, RIGHT = range(4)
@@ -32,12 +60,14 @@ class Gridworld(gym.Env):
         self.action_space = spaces.Discrete(4)
         self.name = name
         self.seed = seed
+
         # config
         if seed is None:
             self.init_agent_pos = agent_pos
             self.food_pos = food_pos
         else:
             rng = random.Random(seed)
+            self.board_walls =  maze(width, height, rng)
             self.init_agent_pos = (rng.randint(0, 3), rng.randint(0, 3))
             self.food_pos = []
             n_foods = rng.randint(1, 3)
@@ -46,7 +76,9 @@ class Gridworld(gym.Env):
         self.food_pos = list(set(self.food_pos))
         self.food_left = len(self.food_pos)
         self.simple_state = simple_state
+        self.agent_pos= (0, 0)
 
+        self.board_interactive = np.zeros((width, height))
         #s = list(self.food_pos)
         #for sset in chain.from_iterable(combinations(s, r) for r in range(len(s)+1)):
         #    print(sset)
@@ -71,7 +103,7 @@ class Gridworld(gym.Env):
         self.time = 0
 
         # state
-        self.board_walls = np.array(self.walls[np.random.randint(0, len(self.walls))]) if self.walls else np.zeros((self.height, self.width))
+        #self.board_walls = np.array(self.walls[np.random.randint(0, len(self.walls))]) if self.walls else np.zeros((self.height, self.width))
         self.board_interactive = np.zeros((self.height, self.width))
         for food in self.food_pos:
             self.board_interactive[food[1]][food[0]] = 1
@@ -190,3 +222,11 @@ class Gridworld(gym.Env):
     def render(self, mode=''):
         self.draw(self.screen)    
         pg.display.flip()
+
+
+pg.init()
+screen = pg.display.set_mode((9 * 16, 9 * 16))
+env = Gridworld(width=9, height=2, seed=11)
+env.screen = screen
+while True:
+    env.render()
